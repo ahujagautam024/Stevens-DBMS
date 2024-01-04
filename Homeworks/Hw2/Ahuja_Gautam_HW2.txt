@@ -1,0 +1,168 @@
+Name: Gautam Vinod Ahuja
+CWID: 20022514
+CS 561-B DBMS 1
+Homework 2
+
+Report #1:
+
+with T1 as (
+select cust, prod, month, round(avg(quant)) as avg_current
+from sales
+group by cust, prod, month
+order by cust, prod, month
+),
+reference as (
+select T1a.cust, T1a.prod, T1a.month, sales.quant, T1b.avg_current as avg_prev , T1a.avg_current, T1c.avg_current as avg_next
+from T1 as T1a 
+left join T1 as T1b on T1a.cust = T1b.cust and T1a.prod = T1b.prod and T1a.month - 1 = T1b.month
+left join T1 as T1c on T1a.cust = T1c.cust and T1a.prod = T1c.prod and T1a.month + 1 = T1c.month
+left join sales on T1a.cust = sales.cust and T1a.prod = sales.prod and T1a.month = sales.month
+),
+final as 
+(
+	select T1.cust as customer, T1.prod as product, T1.month, count(T2.quant) as "sales_count_between_avgs"
+	from T1
+	left join reference as T2 on T2.prod = T1.prod and T1.cust = T2.cust and T2.month = T1.month 
+	and ((T2.quant between T2.avg_next and T2.avg_prev) or (T2.quant between T2.avg_prev and T2.avg_next))
+	group by T1.cust, T1.prod, T1.month
+)
+
+select * from final order by 1,2,3;
+
+Report #2:
+
+with during as 
+(
+	select cust, prod, month, round(avg(quant),2) as during_avg
+	from sales
+	group by cust, prod, month
+	order by cust, prod, month
+),
+before as
+(
+	select d1.cust, d1.prod, d1.month, d2.during_avg as before_avg
+	from during as d1 
+	join during as d2 
+	on d1.cust = d2.cust and d1.prod = d2.prod and d1.month - 1 = d2.month
+),
+after as 
+(
+	select d1.cust, d1.prod, d1.month, d2.during_avg as after_avg
+	from during as d1 
+	join during as d2
+	on d1.cust = d2.cust and d1.prod = d2.prod and d1.month + 1 = d2.month
+),
+reference as 
+(
+		select T1.cust as customer, T1.prod as product, T1.month, T2.before_avg, T1.during_avg, T3.after_avg
+		from during as T1 
+		left join before as T2 on T1.cust = T2.cust and T1.prod = T2.prod and T1.month = T2.month
+		left join after as T3 on T1.cust = T3.cust and T1.prod = T3.prod and T1.month = T3.month
+)
+
+select * from reference order by 1,2,3;
+
+
+Report #3:
+
+with base_table as
+(
+	select cust, prod, state, round(avg(quant),2) PROD_AVG
+	from sales
+	group by cust, prod, state
+),
+other_cust as
+(
+	select b.cust, b.prod, b.state, round(avg(quant),2) OTHER_CUST_AVG
+	from sales s, base_table b
+	where b.prod = s.prod AND b.state = s.state AND b.cust != s.cust
+	group by b.cust, b.prod, b.state
+),
+other_prod as
+(
+	select b.cust, b.prod, b.state, round(avg(quant),2) OTHER_PROD_AVG
+	from sales s, base_table b
+	where b.prod != s.prod AND b.state = s.state AND b.cust = s.cust
+	group by b.cust, b.prod, b.state
+),
+other_state as
+(
+	select b.cust, b.prod, b.state, round(avg(quant),2) OTHER_STATE_AVG
+	from sales s, base_table b
+	where b.prod = s.prod AND b.state != s.state AND b.cust = s.cust
+	group by b.cust, b.prod, b.state
+)
+select base_table.cust CUSTOMER, base_table.prod PRODUCT, base_table.state, base_table.prod_avg, 
+other_cust.other_cust_avg, other_prod.other_prod_avg, other_state.other_state_avg
+from base_table natural join other_cust
+natural join other_prod
+natural join other_state
+order by 1,2,3;
+
+Report #4:
+
+with first as 
+(
+    SELECT cust, max(quant) first_max
+    FROM sales
+    WHERE state = 'NJ'
+    GROUP BY cust
+),
+second as 
+(
+    SELECT s.cust, max(s.quant) second_max
+    FROM sales s, first f
+	where s.cust = f.cust and s.quant < f.first_max and s.state = 'NJ'
+	group by s.cust
+),
+third as 
+(
+	select s.cust, max(s.quant) third_max
+	from sales s, second se
+	where s.cust = se.cust and s.quant < se. second_max and s.state = 'NJ'
+	group by s.cust
+),
+final as
+(	
+	select * from first
+	union
+	select * from second
+	union 
+	select * from third
+	order by 1
+)
+
+select sales.cust CUSTOMER, sales.quant QUANTITY, sales.prod PRODUCT, sales.date
+from final, sales
+where sales.cust = final.cust and sales.quant = final.first_max and sales.state = 'NJ'
+order by sales.cust, sales.quant desc;
+
+Report #5:
+
+	with base as
+(
+	select prod, quant
+	from sales
+	order by 1, 2
+),
+pos as
+(
+	select b.prod, b.quant, (select count(*) from base b1 where b1.prod = b.prod and b1.quant<= b.quant) as pos
+ 	from base b
+),
+med_pos as
+(
+	select p.prod, ceiling(MAX(p.pos)/ 2.0) median_pos
+	from pos p
+	group by p.prod
+),
+meds as
+(
+	SELECT p.prod, p.quant, p.pos
+	FROM pos p, med_pos mp
+	WHERE p.prod = mp.prod and p.pos >= mp.median_pos
+)
+select meds.prod PRODUCT, min(meds.quant) MEDIAN_QUANT
+from meds
+GROUP BY meds.prod
+order by 1;

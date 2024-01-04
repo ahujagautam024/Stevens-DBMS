@@ -1,0 +1,233 @@
+Name: Gautam Vinod Ahuja
+CWID: 20022514
+CS 561-B DBMS 1
+Homework 1
+
+
+
+
+REPORT #1:
+
+with part1 as 
+(
+	SELECT sales.cust customer, MIN(sales.quant) min_quant, MAX(sales.quant) max_quant, round(AVG(sales.quant), 2) avg_quant
+	FROM sales
+	GROUP BY cust
+),
+
+part2 as
+(
+	SELECT p1.customer, p1.min_quant MIN_Q, s.prod min_prod, s.date min_date, s.state ST
+	FROM part1 p1, sales s
+	WHERE p1.customer = s.cust AND p1.min_quant = s.quant
+),
+part3 as
+(
+	SELECT p1.customer, p1.max_quant MAX_Q, s.prod max_prod, s.date max_date, s.state ST, p1.avg_quant
+	FROM part1 p1, sales s
+	WHERE p1.customer = s.cust AND p1.max_quant = s.quant
+)
+
+SELECT * 
+FROM part2 INNER JOIN part3 on part2.customer = part3.customer
+ORDER BY part2.customer;
+
+
+REPORT #2:
+
+with part1 as
+(
+SELECT sales.date, sum(sales.quant) total_sales
+FROM sales
+GROUP BY sales.date
+),
+
+part2 as
+(
+	SELECT extract(year FROM part1.date) as year, extract(month FROM part1.date) as month, max(total_sales) bussiest_total_q, min(total_sales) slowest_total_q
+	FROM part1
+	GROUP BY extract(year FROM part1.date), extract(month FROM part1.date)
+),
+part3 as 
+(
+	SELECT part2.year, part2.month, extract(day FROM part1.date) busiest_day, part2.bussiest_total_q 
+	FROM part2, part1
+	WHERE extract(year FROM part1.date) = part2.year and extract(month FROM part1.date) = part2.month and part2.bussiest_total_q = part1.total_sales
+), 
+part4 as
+(
+	SELECT part2.year, part2.month, extract(day FROM part1.date) slowest_day, part2.slowest_total_q 
+	FROM part2, part1
+	WHERE extract(year FROM part1.date) = part2.year and extract(month FROM part1.date) = part2.month and part2.slowest_total_q = part1.total_sales
+)
+
+SELECT * 
+FROM part3 NATURAL JOIN part4
+ORDER BY year, month;
+
+
+
+
+REPORT #3: 
+
+WITH part1 AS 
+(
+	SELECT CUST, PROD, SUM(QUANT) TOTAL_QUANT
+	FROM SALES
+	GROUP BY CUST, PROD
+),
+part2 AS 
+(
+	SELECT part1.CUST, MAX(part1.TOTAL_QUANT) MAX_QUANT, MIN(part1.TOTAL_QUANT) MIN_QUANT
+	FROM part1
+	GROUP BY part1.CUST
+),
+part3 AS 
+(
+	SELECT part1.CUST, part2.MAX_QUANT, part1.PROD MOST_FAV_PROD
+	FROM part1, part2 
+	WHERE part1.CUST = part2.CUST AND part1.TOTAL_QUANT = part2.MAX_QUANT
+),
+part4 AS 
+
+(
+	SELECT part1.CUST, part2.MIN_QUANT, part1.PROD LEAST_FAV_PROD
+	FROM part1, part2 
+	WHERE part1.CUST = part2.CUST AND part1.TOTAL_QUANT = part2.MIN_QUANT
+)
+
+SELECT part3.cust CUSTOMER, part3.MOST_FAV_PROD, part4.LEAST_FAV_PROD
+FROM part3 NATURAL JOIN part4
+ORDER BY part3.CUST;
+
+--- REPORT #4:
+
+with part1 as
+(
+	SELECT prod, max(quant) q1_max
+	FROM sales
+	WHERE sales.month IN (1,2,3)
+	GROUP BY prod
+),
+part2 as
+(
+	SELECT prod, max(quant) q2_max
+	FROM sales
+	WHERE sales.month IN (4,5,6)
+	GROUP BY prod
+),
+part3 as
+(
+	SELECT prod, max(quant) q3_max
+	FROM sales
+	WHERE sales.month IN (7,8,9)
+	GROUP BY prod
+),
+part4 as
+(
+	SELECT prod, max(quant) q4_max
+	FROM sales
+	WHERE sales.month IN (10,11,12)
+	GROUP BY prod
+),
+part5 as 
+(
+	SELECT part1.prod, part1.q1_max, sales.date DATE
+	FROM part1, sales
+	WHERE part1.prod = sales.prod AND part1.q1_max = sales.quant AND sales.month IN (1,2,3)
+),
+part6 as
+(
+	SELECT part2.prod, part2.q2_max, sales.date DATE
+	FROM  part2, sales
+	WHERE part2.prod = sales.prod AND part2.q2_max = sales.quant AND sales.month IN (4,5,6)
+),
+part7 as
+(
+	SELECT part3.prod, part3.q3_max, sales.date DATE
+	FROM  part3, sales
+	WHERE part3.prod = sales.prod AND part3.q3_max = sales.quant AND sales.month IN (7,8,9)
+),
+part8 as
+(
+	SELECT part4.prod, part4.q4_max, sales.date DATE
+	FROM  part4, sales
+	WHERE part4.prod = sales.prod AND part4.q4_max = sales.quant AND sales.month IN (10,11,12)
+)
+
+
+SELECT part5.prod PRODUCT, part5.q1_max, part5.DATE, part6.q2_max, part6.DATE, part7.q3_max, part7.DATE, part8.q4_max, part8.DATE 
+FROM part5
+INNER JOIN part6 ON part5.prod = part6.prod
+INNER JOIN part7 ON part5.prod = part7.prod
+INNER JOIN part8 ON part5.prod = part8.prod
+ORDER BY PRODUCT;
+
+
+REPORT #5:
+
+with part1 as
+(
+	SELECT prod, max(quant) q1_max
+	FROM sales
+	WHERE sales.month IN (1,2,3)
+	GROUP BY prod
+),
+part2 as
+(
+	SELECT prod, max(quant) q2_max
+	FROM sales
+	WHERE sales.month IN (4,5,6)
+	GROUP BY prod
+),
+part3 as
+(
+	SELECT prod, max(quant) q3_max
+	FROM sales
+	WHERE sales.month IN (7,8,9)
+	GROUP BY prod
+),
+part4 as
+(
+	SELECT prod, max(quant) q4_max
+	FROM sales
+	WHERE sales.month IN (10,11,12)
+	GROUP BY prod
+),
+part5 as 
+(
+	SELECT part1.prod, part1.q1_max, sales.date DATE
+	FROM part1, sales
+	WHERE part1.prod = sales.prod AND part1.q1_max = sales.quant AND sales.month IN (1,2,3)
+),
+part6 as
+(
+	SELECT part2.prod, part2.q2_max, sales.date DATE
+	FROM  part2, sales
+	WHERE part2.prod = sales.prod AND part2.q2_max = sales.quant AND sales.month IN (4,5,6)
+),
+part7 as
+(
+	SELECT part3.prod, part3.q3_max, sales.date DATE
+	FROM  part3, sales
+	WHERE part3.prod = sales.prod AND part3.q3_max = sales.quant AND sales.month IN (7,8,9)
+),
+part8 as
+(
+	SELECT part4.prod, part4.q4_max, sales.date DATE
+	FROM  part4, sales
+	WHERE part4.prod = sales.prod AND part4.q4_max = sales.quant AND sales.month IN (10,11,12)
+)
+
+
+SELECT part5.prod PRODUCT, part5.q1_max, part5.DATE, part6.q2_max, part6.DATE, part7.q3_max, part7.DATE, part8.q4_max, part8.DATE 
+FROM part5
+INNER JOIN part6 ON part5.prod = part6.prod
+INNER JOIN part7 ON part5.prod = part7.prod
+INNER JOIN part8 ON part5.prod = part8.prod
+ORDER BY PRODUCT;
+
+
+
+
+
